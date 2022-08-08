@@ -31,14 +31,13 @@ class Router
         add_filter('query_vars', function ($vars) {
             $vars[] = 'orgnk-imageresize';
             $vars[] = 'orgnk-imageresize-id';
-            $vars[] = 'orgnk-imageresize-url';
 
             return $vars;
         });
         add_filter('init', function () {
             add_rewrite_rule(
-                '^orgnk-imageresize\/([a-zA-Z0-9]+)\/(.*)$',
-                'index.php?orgnk-imageresize=1&orgnk-imageresize-id=$matches[1]&orgnk-imageresize-url=$matches[2]',
+                '^orgnk-imageresize\/([a-zA-Z0-9]+)\/?$',
+                'index.php?orgnk-imageresize=1&orgnk-imageresize-id=$matches[1]',
                 'top'
             );
         });
@@ -48,9 +47,8 @@ class Router
             }
 
             $identifier = $wp->query_vars['orgnk-imageresize-id'];
-            $encUrl = $wp->query_vars['orgnk-imageresize-url'];
 
-            $resizedUrl = ImageHandler::getValidResizedUrl($identifier, $encUrl);
+            $resizedUrl = ImageHandler::getValidResizedUrl($identifier);
 
             if (empty($resizedUrl)) {
                 wp_redirect(redirect_guess_404_permalink(), 404);

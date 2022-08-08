@@ -51,19 +51,26 @@ class ImageHandler
     protected $options = [];
 
     /**
+     * @var string Resized URL
+     */
+    protected $resizedUrl;
+
+    /**
      * Prepare the resizer instance
      *
      * @param string $image The path to the image
      * @param integer|string|bool|null $width Desired width of the resized image
      * @param integer|string|bool|null $height Desired height of the resized image
      * @param array|null $options Array of options to pass to the resizer
+     * @param string|null $resziedUrl The URL to the resized image
      */
-    public function __construct($image, $width = 0, $height = 0, $options = [])
+    public function __construct($image, $width = 0, $height = 0, $options = [], $resizedUrl = null)
     {
         $this->image = $image;
         $this->width = (int) (($width === 'auto') ? 0 : $width);
         $this->height = (int) (($height === 'auto') ? 0 : $height);
         $this->options = array_merge($this->getDefaultOptions(), $options);
+        $this->resizedUrl = $resizedUrl;
     }
 
     /**
@@ -85,6 +92,20 @@ class ImageHandler
      * Get the current config
      */
     public function getConfig(): array
+    {
+        return [
+            'image' => [
+                'path' => $this->image,
+                'mtime' => filemtime($this->image),
+            ],
+            'width' => $this->width,
+            'height' => $this->height,
+            'options' => $this->options,
+            'resizedUrl' => $this->getResizedUrl(),
+        ];
+    }
+
+    public function getConfigForIdentifier(): array
     {
         return [
             'image' => [
@@ -253,7 +274,7 @@ class ImageHandler
     public function getResizedImage()
     {
         // Generate the unique file identifier for the resized image
-        $fileIdentifier = hash_hmac('sha1', serialize($this->getConfig()), AUTH_KEY);
+        $fileIdentifier = hash_hmac('sha1', serialize($this->getConfigForIdentifier()), AUTH_KEY);
 
         // Generate the filename for the resized image
         return pathinfo($this->image, PATHINFO_FILENAME)
@@ -289,15 +310,13 @@ class ImageHandler
      */
     public function getResizerUrl()
     {
-        $resizedUrl = rawurlencode($this->getResizedUrl());
-
         // Get the current configuration's identifier
         $identifier = $this->getIdentifier();
 
         // Store the current configuration
         $this->storeConfig();
 
-        return home_url('/orgnk-imageresize/' . $identifier . '/' . $resizedUrl);
+        return home_url('/orgnk-imageresize/' . $identifier);
     }
 
     /**
@@ -305,6 +324,10 @@ class ImageHandler
      */
     public function getResizedUrl(): string
     {
+        if (!is_null($this->resizedUrl)) {
+            return $this->resizedUrl;
+        }
+
         $url = content_url('resized-uploads/' . $this->getResizedImage());
 
         // Ensure that a properly encoded URL is returned
@@ -312,7 +335,7 @@ class ImageHandler
         $lastSegment = array_pop($segments);
         $url = implode('/', $segments) . '/' . rawurlencode(rawurldecode($lastSegment));
 
-        return $url;
+        return $this->resizedUrl = $url;
     }
 
     /**
@@ -338,7 +361,7 @@ class ImageHandler
         }
 
         // Generate & return the identifier
-        return $this->identifier = hash_hmac('sha1', $this->getResizedUrl(), AUTH_KEY);
+        return $this->identifier = hash_hmac('sha1', serialize($this->getConfigForIdentifier()), AUTH_KEY);
     }
 
     /**
@@ -369,7 +392,7 @@ class ImageHandler
             throw new Exception('Unable to retrieve the configuration for ' . esc_html($identifier));
         }
 
-        $resizer = new static($config['image']['path'], $config['width'], $config['height'], $config['options']);
+        $resizer = new static($config['image']['path'], $config['width'], $config['height'], $config['options'], $config['resizedUrl']);
 
         // Remove the data from the cache only after successfully instantiating the resizer
         // in order to make it easier to debug should any issues occur during the instantiation
@@ -385,16 +408,17 @@ class ImageHandler
      *
      * @return string|null Returns null if the provided value was invalid
      */
-    public static function getValidResizedUrl(string $identifier, string $encodedUrl)
+    public static function getValidResizedUrl(string $identifier)
     {
-        // Slashes in URL params have to be double encoded to survive Laravel's router
-        // @see https://github.com/octobercms/october/issues/3592#issuecomment-671017380
-        $decodedUrl = rawurldecode($encodedUrl);
         $url = null;
 
         // The identifier should be the signed version of the decoded URL
-        if (static::isValidIdentifier($identifier) && $identifier === hash_hmac('sha1', $decodedUrl, AUTH_KEY)) {
-            $url = $decodedUrl;
+        if (static::isValidIdentifier($identifier)) {
+            $config = get_transient(static::CACHE_PREFIX . $identifier);
+
+            if ($config !== false) {
+                $url = $config['resizedUrl'];
+            }
         }
 
         return $url;
