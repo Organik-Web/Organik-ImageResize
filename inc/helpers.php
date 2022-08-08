@@ -14,9 +14,9 @@ if (!function_exists('orgnk_image_resize')) {
      * @param array $options
      * @return string
      */
-    function orgnk_image_resize($path, $width, $height, array $options = [])
+    function orgnk_image_resize($path, $width, $height, ?array $options = null)
     {
-        $resizer = new ImageHandler($path, $width, $height, $options);
+        $resizer = new ImageHandler($path, $width, $height, $options ?? []);
         return $resizer->getUrl();
     }
 }
@@ -55,7 +55,7 @@ if (!function_exists('orgnk_picture')) {
                 $path,
                 $breakpoint['width'],
                 $breakpoint['height'],
-                array_replace($breakpoint['options'], ['extension' => $breakpoint['format']]),
+                array_replace($breakpoint['options'] ?? [], ['extension' => $breakpoint['format']]),
             );
 
             if ($breakpoint['breakpoint'] === 0) {
