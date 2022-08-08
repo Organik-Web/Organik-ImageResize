@@ -54,7 +54,7 @@ class Router
 
             if (empty($resizedUrl)) {
                 wp_redirect(redirect_guess_404_permalink(), 404);
-                return;
+                exit;
             }
 
             try {
@@ -68,7 +68,8 @@ class Router
                 throw $e;
             }
 
-            return wp_redirect($resizedUrl);
+            wp_redirect($resizedUrl);
+            exit;
         });
     }
 }
