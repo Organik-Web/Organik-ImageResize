@@ -77,7 +77,7 @@ if (!function_exists('orgnk_picture')) {
             // Return an image tag
             echo sprintf('<img src="%s"%s>', $default, implode(' ', array_map(function ($key, $value) {
                 return $key . '="' . $value . '"';
-            }, $attributes)));
+            }, array_keys($attributes), array_values($attributes))));
         }
 
         echo sprintf(
@@ -92,7 +92,7 @@ if (!function_exists('orgnk_picture')) {
             }, $images)),
             sprintf('<img src="%s"%s>', $default, implode(' ', array_map(function ($key, $value) {
                 return $key . '="' . $value . '"';
-            }, $attributes)))
+            }, array_keys($attributes), array_values($attributes))))
         );
     }
 }
