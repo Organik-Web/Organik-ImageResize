@@ -168,6 +168,13 @@ class WordpressHandler
         $metadata['path'] = str_replace(WP_CONTENT_DIR, '', $filePath);
         $metadata['url'] = str_replace(WP_CONTENT_URL, '', wp_get_attachment_url($attachmentId));
 
+        // Create resized directory if it does not exist
+        if (!is_dir(WP_CONTENT_DIR . '/resized-uploads')) {
+            if (!@mkdir(WP_CONTENT_DIR . '/resized-uploads')) {
+                throw new Exception('Could not create resized images directory');
+            }
+        }
+
         // Generate resized images and create resized metadata
         foreach ($sizes as $name => $size) {
             $handler = new ImageHandler($filePath, $size['width'], $size['height'], $size['options']);
@@ -200,8 +207,75 @@ class WordpressHandler
         return $metadata;
     }
 
-    public function updateImageMetadata($value, $post_id, $field, $original)
+    public function updateImageMetadata($value, $postId, $field, $original)
     {
+        if (empty($value)) {
+            return;
+        }
+
+        $metadata = wp_get_attachment_metadata($value);
+        if ($metadata === false) {
+            return;
+        }
+        $filePath = WP_CONTENT_DIR . $metadata['path'];
+
+        // Determine field
+        $fieldInfo = [
+            'id' => $field['ID'],
+            'label' => $field['label'] ?? '',
+            'name' => $field['name'] ?? '',
+        ];
+        $formInfo = [
+            'id' => null,
+            'name' => null,
+        ];
+
+        while (!empty($field['parent'])) {
+            $parentId = $field['parent'];
+            $field = acf_get_field($parentId);
+            if ($field === false) {
+                $form = get_post($parentId);
+                $formInfo = [
+                    'id' => $parentId,
+                    'name' => $form->post_title,
+                ];
+                break;
+            }
+        }
+
+        $sizes = apply_filters('orgnk_image_resize_acf_sizes', [], $formInfo, $fieldInfo);
+
+        // Generate resized images and create resized metadata
+        foreach ($sizes as $name => $size) {
+            $handler = new ImageHandler($filePath, $size['width'], $size['height'], $size['options']);
+            $resizedPath = $handler->getPathToResizedImage();
+            $resizedUrl = $handler->getResizedUrl();
+            $relativePath = str_replace(WP_CONTENT_DIR, '', $resizedPath);
+            $relativeUrl = str_replace(WP_CONTENT_URL, '', $resizedUrl);
+
+            Resizer::open($filePath)
+                ->resize($size['width'], $size['height'], $size['options'])
+                ->save($resizedPath);
+
+            $config = $handler->getConfig();
+            $imageSize = getimagesize($resizedPath);
+            $fileSize = filesize($resizedPath);
+
+            $metadata['sizes'][$name] = [
+                'file' => basename($resizedPath),
+                'path' => $relativeUrl,
+                'url' => $relativePath,
+                'width' => $config['width'],
+                'height' => $config['height'],
+                'realWidth' => $imageSize[0],
+                'realHeight' => $imageSize[1],
+                'mime-type' => $this->getMimeType($config['extension'] ?? $handler->getExtension()),
+                'filesize' => $fileSize,
+            ];
+        }
+
+        wp_update_attachment_metadata($value, $metadata);
+
         return $value;
     }
 
