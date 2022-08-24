@@ -27,7 +27,11 @@ register_deactivation_hook(__FILE__, ['Organik\ImageResizer\Classes\Activator', 
 require_once ORGNK_IMAGERESIZE_PATH . 'classes/Resizer.php';
 require_once ORGNK_IMAGERESIZE_PATH . 'classes/ImageHandler.php';
 require_once ORGNK_IMAGERESIZE_PATH . 'classes/Router.php';
+require_once ORGNK_IMAGERESIZE_PATH . 'classes/WordpressHandler.php';
 require_once ORGNK_IMAGERESIZE_PATH . 'inc/helpers.php';
 
 // Load router
 Organik\ImageResizer\Classes\Router::instance();
+
+// Load Wordpress handler
+Organik\ImageResizer\Classes\WordpressHandler::instance();

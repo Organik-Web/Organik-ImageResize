@@ -1,6 +1,7 @@
 <?php
 
 use Organik\ImageResizer\Classes\ImageHandler;
+use Organik\ImageResizer\Classes\WordpressHandler;
 
 if (!function_exists('orgnk_image_resize')) {
     /**
@@ -96,3 +97,12 @@ if (!function_exists('orgnk_picture')) {
         );
     }
 }
+
+// if (!function_exists('orgnk_get_image_path')) {
+
+//     function orgnk_get_image_path($attachmentId, $size = null)
+//     {
+//         $wpHandler = new WordpressHandler();
+//         return $wpHandler->getImagePath($path);
+//     }
+// }
