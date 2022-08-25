@@ -232,7 +232,18 @@ class WordpressHandler
 
         while (!empty($field['parent'])) {
             $parentId = $field['parent'];
-            $field = acf_get_field($parentId);
+
+            if (str_starts_with($parentId, 'field_')) {
+                $field = acf_get_field($parentId);
+            } elseif (str_starts_with($parentId, 'group_')) {
+                $form = acf_get_field_group($parentId);
+                $formInfo = [
+                    'id' => $form['key'],
+                    'name' => $form['title'],
+                ];
+                break;
+            }
+
             if ($field === false) {
                 $form = get_post($parentId);
                 $formInfo = [
@@ -247,6 +258,11 @@ class WordpressHandler
 
         // Generate resized images and create resized metadata
         foreach ($sizes as $name => $size) {
+            // Skip sizes that have already been created
+            if (isset($metadata['sizes'][$name])) {
+                continue;
+            }
+
             $handler = new ImageHandler($filePath, $size['width'], $size['height'], $size['options']);
             $resizedPath = $handler->getPathToResizedImage();
             $resizedUrl = $handler->getResizedUrl();
@@ -318,5 +334,37 @@ class WordpressHandler
                 }
             }
         }
+    }
+
+    /**
+     * Gets the resized image URLs for a given attachment.
+     *
+     * If `$size` is `null`, all available URLs are returned, keyed by their size. If a size is
+     * provided, a single URL will be returned if that size is available, otherwise `null` will
+     * be returned.
+     *
+     * @param int|WP_Post $attachmentId
+     * @param string|null $size
+     * @return array|string|null
+     */
+    public function getImageUrl($attachmentId, $size = null)
+    {
+        $metadata = wp_get_attachment_metadata($attachmentId);
+
+        if (empty($metadata)) {
+            return null;
+        }
+
+        if (is_null($size)) {
+            $urls = [
+                'full' => $metadata['url'],
+            ];
+            foreach ($metadata['sizes'] as $size => $data) {
+                $urls[$size] = WP_CONTENT_URL . $data['url'];
+            }
+            return $urls;
+        }
+
+        return $metadata['sizes'][$size]['url'] ?? null;
     }
 }
