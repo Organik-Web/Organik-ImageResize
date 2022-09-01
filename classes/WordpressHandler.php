@@ -75,7 +75,7 @@ class WordpressHandler
      * @param WP_Post $attachment
      * @return void
      */
-    public function imageAttributes($attributes)
+    public function imageAttributes($attributes, $attachment)
     {
         if (!is_admin()) {
             return $attributes;
@@ -86,8 +86,7 @@ class WordpressHandler
             return $attributes;
         }
 
-        $attachmentId = get_the_ID();
-        $metadata = wp_get_attachment_metadata($attachmentId);
+        $metadata = wp_get_attachment_metadata($attachment->ID);
 
         $attributes['src'] = WP_CONTENT_URL . $metadata['sizes'][$defaultThumb]['url'];
         unset($attributes['srcset']);
