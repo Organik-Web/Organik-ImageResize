@@ -47,7 +47,7 @@ class WordpressHandler
     public function init(): void
     {
         // Handle image attributes in media library
-        add_filter('wp_get_attachment_image_attributes', [$this, 'imageAttributes']);
+        add_filter('wp_get_attachment_image_attributes', [$this, 'imageAttributes'], 10, 2);
 
         // Disable default image sizes
         add_action('intermediate_image_sizes_advanced', [$this, 'setImageSizes']);
