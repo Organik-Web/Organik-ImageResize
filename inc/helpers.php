@@ -85,12 +85,18 @@ if (!function_exists('orgnk_picture')) {
         }
 
         if ($default === null) {
+            // Prefer a non-WEBP image as default ...
             foreach ($images as $image) {
                 if ($image['breakpoint']['format'] === 'webp') {
                     continue;
                 }
                 $default = $image['image'];
                 break;
+            }
+
+            // ... but allow it if there's no other option.
+            if ($default === null) {
+                $default = $images[0]['image'];
             }
         }
 
