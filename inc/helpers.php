@@ -75,7 +75,6 @@ if (!function_exists('orgnk_picture')) {
 
                 if ($breakpoint['breakpoint'] === 0 && $breakpoint['format'] !== 'webp') {
                     $default = $image;
-                    continue;
                 }
 
                 $images[] = [
@@ -86,7 +85,13 @@ if (!function_exists('orgnk_picture')) {
         }
 
         if ($default === null) {
-            $default = array_shift($images)['image'];
+            foreach ($images as $image) {
+                if ($image['breakpoint']['format'] === 'webp') {
+                    continue;
+                }
+                $default = $image['image'];
+                break;
+            }
         }
 
         if (count($images) < 0) {
