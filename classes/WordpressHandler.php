@@ -159,18 +159,18 @@ class WordpressHandler
         $mimeType = finfo_file($finfo, $filePath);
         finfo_close($finfo);
 
+        // Add standard metadata
+        $metadata['path'] = str_replace(WP_CONTENT_DIR, '', $filePath);
+        $metadata['url'] = str_replace(WP_CONTENT_URL, '', wp_get_attachment_url($attachmentId));
+
         if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif'])) {
-            // For other types of files, return metadata as is
+            // For other types of files, return metadata now
             return $metadata;
         }
 
         // Generate a list of sizes
         $sizes = apply_filters('orgnk_image_resize_sizes', static::$imageSizes);
         $metadata = apply_filters('orgnk_image_resize_metadata', $metadata, $attachmentId);
-
-        // Add standard metadata
-        $metadata['path'] = str_replace(WP_CONTENT_DIR, '', $filePath);
-        $metadata['url'] = str_replace(WP_CONTENT_URL, '', wp_get_attachment_url($attachmentId));
 
         // Create resized directory if it does not exist
         if (!is_dir(WP_CONTENT_DIR . '/resized-uploads')) {
