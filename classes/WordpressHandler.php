@@ -56,6 +56,9 @@ class WordpressHandler
         add_filter('big_image_size_threshold', '__return_false');
         add_filter('wp_image_maybe_exif_rotate', '__return_false');
 
+        // Modify image tags as required
+        add_filter('wp_get_attachment_image', [$this, 'handleImageTag'], 10, 5);
+
         // Generate pre-resized images on upload
         add_filter('wp_generate_attachment_metadata', [$this, 'generateImageMetadata'], 10, 2);
 
@@ -88,8 +91,10 @@ class WordpressHandler
 
         $metadata = wp_get_attachment_metadata($attachment->ID);
 
-        $attributes['src'] = WP_CONTENT_URL . $metadata['sizes'][$defaultThumb]['url'];
-        unset($attributes['srcset']);
+        if (isset($metadata['sizes'][$defaultThumb])) {
+            $attributes['src'] = WP_CONTENT_URL . $metadata['sizes'][$defaultThumb]['url'];
+            unset($attributes['srcset']);
+        }
 
         return $attributes;
     }
@@ -206,6 +211,15 @@ class WordpressHandler
         return $metadata;
     }
 
+    /**
+     * Applies image metadata using the given ACF data.
+     *
+     * @param mixed $value
+     * @param int $postId
+     * @param string $field
+     * @param mixed $original
+     * @return mixed
+     */
     public function updateImageMetadata($value, $postId, $field, $original)
     {
         if (empty($value)) {
@@ -365,5 +379,50 @@ class WordpressHandler
         }
 
         return $metadata['sizes'][$size]['url'] ?? null;
+    }
+
+    /**
+     * Handles image tags in the media library.
+     *
+     * @param string $image
+     * @param int $attachmentId
+     * @param string|int[] $size
+     * @param bool $icon
+     * @param string[] $attributes
+     * @return string
+     */
+    public function handleImageTag($image, $attachmentId, $size, $icon, $attributes)
+    {
+        if (!str_ends_with(strtolower($attributes['src']), '.svg')) {
+            return $image;
+        }
+
+        // Fix incorrect image sizes for SVGs
+
+        // Find requested size
+        if (isset($attributes['class']) && preg_match('/size-([0-9]+)x([0-9]+)/', $attributes['class'], $matches)) {
+            $width = (int) $matches[1];
+            $height = (int) $matches[2];
+        } else {
+            return $image;
+        }
+
+        // Find actual size
+        if (preg_match('/width="([0-9]+)"/', $image, $matches)) {
+            $actualWidth = (int) $matches[1];
+
+            if ($actualWidth !== $width) {
+                $image = str_replace('width="' . $actualWidth . '"', 'width="' . $width . '"', $image);
+            }
+        }
+        if (preg_match('/height="([0-9]+)"/', $image, $matches)) {
+            $actualHeight = (int) $matches[1];
+
+            if ($actualHeight !== $height) {
+                $image = str_replace('height="' . $actualHeight . '"', 'height="' . $height . '"', $image);
+            }
+        }
+
+        return $image;
     }
 }
