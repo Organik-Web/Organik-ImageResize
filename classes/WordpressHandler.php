@@ -66,7 +66,10 @@ class WordpressHandler
         add_action('delete_attachment', [$this, 'deleteImageMetadata']);
 
         // Handle special cases for images added to Advanced Custom Fields
-        add_filter('acf/update_value/type=image', [$this, 'updateImageMetadata'], 10, 4);
+        add_filter('acf/update_value/type=image', [$this, 'updateAcfImageMetadata'], 10, 4);
+
+        // Handle special cases for images added through WP All Import
+        add_filter('pmxi_gallery_image', [$this, 'updateWpAllImportImageMetadata'], 10, 2);
     }
 
     /**
@@ -220,7 +223,7 @@ class WordpressHandler
      * @param mixed $original
      * @return mixed
      */
-    public function updateImageMetadata($value, $postId, $field, $original)
+    public function updateAcfImageMetadata($value, $postId, $field, $original)
     {
         if (empty($value)) {
             return;
@@ -306,6 +309,61 @@ class WordpressHandler
         wp_update_attachment_metadata($value, $metadata);
 
         return $value;
+    }
+
+    /**
+     * Applies image metadata using the WP All Import data.
+     *
+     * @param int $postId
+     * @param int $attachmentId
+     * @param string $path
+     * @param string $keepExisting
+     * @return void
+     */
+    public function updateWpAllImportImageMetadata($postId, $attachmentId)
+    {
+        $post = get_post($postId);
+        $postMetadata = get_post_meta($postId, '_wp_attachment_metadata', true);
+        $metadata = wp_get_attachment_metadata($attachmentId);
+        $filePath = WP_CONTENT_DIR . $metadata['path'];
+
+        $sizes = apply_filters('orgnk_image_resize_wp_all_import_sizes', [], $post, $postMetadata, $attachmentId, $metadata);
+
+        // Generate resized images and create resized metadata
+        foreach ($sizes as $name => $size) {
+            // Skip sizes that have already been created
+            if (isset($metadata['sizes'][$name])) {
+                continue;
+            }
+
+            $handler = new ImageHandler($filePath, $size['width'], $size['height'], $size['options']);
+            $resizedPath = $handler->getPathToResizedImage();
+            $resizedUrl = $handler->getResizedUrl();
+            $relativePath = str_replace(WP_CONTENT_DIR, '', $resizedPath);
+            $relativeUrl = str_replace(WP_CONTENT_URL, '', $resizedUrl);
+
+            Resizer::open($filePath)
+                ->resize($size['width'], $size['height'], $size['options'])
+                ->save($resizedPath);
+
+            $config = $handler->getConfig();
+            $imageSize = getimagesize($resizedPath);
+            $fileSize = filesize($resizedPath);
+
+            $metadata['sizes'][$name] = [
+                'file' => basename($resizedPath),
+                'path' => $relativeUrl,
+                'url' => $relativePath,
+                'width' => $config['width'],
+                'height' => $config['height'],
+                'realWidth' => $imageSize[0],
+                'realHeight' => $imageSize[1],
+                'mime-type' => $this->getMimeType($config['extension'] ?? $handler->getExtension()),
+                'filesize' => $fileSize,
+            ];
+        }
+
+        wp_update_attachment_metadata($attachmentId, $metadata);
     }
 
     /**
