@@ -62,6 +62,9 @@ class WordpressHandler
         // Generate pre-resized images on upload
         add_filter('wp_generate_attachment_metadata', [$this, 'generateImageMetadata'], 10, 2);
 
+        // Generate pre-resized images on update
+        add_filter('wp_update_attachment_metadata', [$this, 'generateImageMetadata'], 10, 2);
+
         // Delete pre-resized images on delete
         add_action('delete_attachment', [$this, 'deleteImageMetadata']);
 
