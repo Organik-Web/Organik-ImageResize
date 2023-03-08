@@ -62,7 +62,6 @@ class WordpressHandler
         // Generate pre-resized images on upload
         add_filter('wp_generate_attachment_metadata', [$this, 'generateImageMetadata'], 10, 2);
 
-        // Generate pre-resized images on update
         add_filter('wp_update_attachment_metadata', [$this, 'generateImageMetadata'], 10, 2);
 
         // Delete pre-resized images on delete
@@ -169,7 +168,7 @@ class WordpressHandler
         $metadata['path'] = str_replace(WP_CONTENT_DIR, '', $filePath);
         $metadata['url'] = str_replace(WP_CONTENT_URL, '', wp_get_attachment_url($attachmentId));
 
-        if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif'])) {
+        if (!in_array($mimeType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'])) {
             // For other types of files, return metadata now
             return $metadata;
         }
@@ -190,6 +189,12 @@ class WordpressHandler
             $handler = new ImageHandler($filePath, $size['width'], $size['height'], $size['options']);
             $resizedPath = $handler->getPathToResizedImage();
             $resizedUrl = $handler->getResizedUrl();
+            $extension =  ( $size && isset( $size['options']['extension'] ) ) ? $size['options']['extension'] : NULL;
+
+            if ( $extension == 'webp' && $mimeType == 'image/webp' ) {
+                $resizedPath = str_replace('.webp', '.png', $resizedPath);
+                $resizedUrl = str_replace('.webp', '.png', $resizedUrl);
+            }
             $relativePath = str_replace(WP_CONTENT_DIR, '', $resizedPath);
             $relativeUrl = str_replace(WP_CONTENT_URL, '', $resizedUrl);
 
