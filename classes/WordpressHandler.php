@@ -68,9 +68,6 @@ class WordpressHandler
         // Delete pre-resized images on delete
         add_action('delete_attachment', [$this, 'deleteImageMetadata']);
 
-        // Handle special cases for images added to Advanced Custom Fields
-        add_filter('acf/update_value/type=image', [$this, 'updateAcfImageMetadata'], 10, 4);
-
         // Handle special cases for images added through WP All Import
         add_filter('pmxi_gallery_image', [$this, 'updateWpAllImportImageMetadata'], 10, 2);
     }
